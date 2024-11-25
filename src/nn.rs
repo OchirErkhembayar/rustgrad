@@ -2,17 +2,23 @@ use rand::Rng;
 
 use crate::engine::Val;
 
+/// Individual neurons that will take in several [`Val`]s as input and do elementwise
+/// multiplication with them and it's own weights
 pub struct Neuron {
-    pub bias: Val,
-    pub weights: Vec<Val>,
+    bias: Val,
+    weights: Vec<Val>,
 }
 
+/// A layer of neurons. The [`MLP`] is constructed with several of these of varying sizes
 pub struct Layer {
-    pub neurons: Vec<Neuron>,
+    neurons: Vec<Neuron>,
 }
 
+/// Multi layer perceptron model
+///
+/// Consists of several layers that the input will pass through
 pub struct MLP {
-    pub layers: Vec<Layer>,
+    layers: Vec<Layer>,
 }
 
 impl Neuron {
@@ -74,11 +80,13 @@ impl Layer {
 }
 
 impl MLP {
+    /// Creates a new [`MLP`].
     pub fn new(layers: &[usize]) -> Self {
         let layers = layers.windows(2).map(|w| Layer::new(w[0], w[1])).collect();
         Self { layers }
     }
 
+    /// Run the model with an input of values
     pub fn call(&self, input: &[Val]) -> Vec<Val> {
         let input = input.iter().map(|i| i.into()).collect::<Vec<_>>();
         self.layers
@@ -86,6 +94,7 @@ impl MLP {
             .fold(input.to_owned(), |input, layer| layer.call(&input))
     }
 
+    /// Collect all the weights of this model
     pub fn parameters(&self) -> Vec<Val> {
         self.layers.iter().fold(vec![], |mut acc, layer| {
             acc.append(&mut layer.parameters());
@@ -93,6 +102,7 @@ impl MLP {
         })
     }
 
+    /// Reset the gradients of all parameters inside this model
     pub fn zero_grad(&self) {
         self.layers.iter().for_each(|l| l.zero_grad());
     }

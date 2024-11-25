@@ -9,6 +9,9 @@ use num_traits::Pow;
 
 mod inner;
 
+/// Value that will hold the entire expression at the end of the forward pass
+///
+/// This would be like a Tensor in PyTorch
 #[derive(Debug, Clone)]
 pub struct Val {
     pub inner: Rc<RefCell<ValInner>>,
@@ -21,14 +24,19 @@ impl Val {
         }
     }
 
+    /// Get the scalar gradient value in the Val
     pub fn grad(&self) -> f32 {
         self.inner.as_ref().borrow().grad
     }
 
+    /// Add to the scalar value
+    ///
+    /// Used mainly for updating weights
     pub fn add_data(&self, grad: f32) {
         self.inner.as_ref().borrow_mut().data += grad;
     }
 
+    /// Get the scalar data value in the Val
     pub fn data(&self) -> f32 {
         self.inner.as_ref().borrow().data
     }
@@ -51,10 +59,12 @@ impl Val {
         }
     }
 
+    /// Run backpropogation. This will update all the gradients of the Vals in the expression tree
     pub fn backward(&self) {
         self.inner.as_ref().borrow_mut().backward();
     }
 
+    /// Reset the gradient to zero
     pub fn zero_grad(&self) {
         self.inner.as_ref().borrow_mut().grad = 0.0;
     }

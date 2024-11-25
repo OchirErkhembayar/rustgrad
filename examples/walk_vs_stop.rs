@@ -1,12 +1,10 @@
-use rustgrad::{engine::Val, nn::MLP};
+use rustgrad::{engine::Val, loss, nn::MLP};
 
-use num_traits::pow::Pow;
-
-const ALPHA: f32 = 0.1;
+const ALPHA: f32 = 0.035;
 
 fn main() {
     let mlp = MLP::new(&[3, 5, 5, 1]);
-    gradient_descent(&mlp, 20);
+    gradient_descent(&mlp, 100);
 }
 
 fn gradient_descent(mlp: &MLP, epochs: usize) {
@@ -21,7 +19,7 @@ fn gradient_descent(mlp: &MLP, epochs: usize) {
     ];
     // 1 = Go
     // 0 = Cannot go
-    let ys = vec![0.0, 0.0, 1.0, 1.0];
+    let ys = vec![Val::new(0.0), Val::new(0.0), Val::new(1.0), Val::new(1.0)];
     for i in 0..epochs {
         println!("Iteration: {}", i + 1);
         // Forward pass
@@ -29,16 +27,11 @@ fn gradient_descent(mlp: &MLP, epochs: usize) {
         println!(
             "Pred: {:?}\nActual: {:?}",
             ypred.iter().map(|v| v.data()).collect::<Vec<_>>(),
-            ys
+            ys.iter().map(|v| v.data()).collect::<Vec<_>>(),
         );
 
         // Loss function
-        let loss = ypred
-            .iter()
-            .zip(&ys)
-            .map(|(pred, actual)| (pred.clone() - *actual).pow(2.0))
-            .reduce(|acc, curr| acc + curr)
-            .unwrap();
+        let loss = loss(&ypred, &ys);
         println!("Loss: {}", loss.data());
 
         // Resetting the gradients

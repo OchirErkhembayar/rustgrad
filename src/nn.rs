@@ -31,7 +31,7 @@ impl Neuron {
         input
             .iter()
             .zip(&self.weights)
-            .map(|(x, w)| x.clone() * w.clone() * self.bias.clone())
+            .map(|(x, w)| x * w * &self.bias)
             .reduce(|acc, v| acc + v)
             .map(|v| v.tanh())
             .unwrap()

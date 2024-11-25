@@ -86,13 +86,22 @@ impl<T: Into<Val>> Add<T> for Val {
     }
 }
 
-impl<T: Into<Val>> Add<T> for &Val {
+impl Add<f32> for &Val {
     type Output = Val;
 
-    fn add(self, rhs: T) -> Self::Output {
-        let rhs = rhs.into();
+    fn add(self, rhs: f32) -> Self::Output {
         Val {
-            inner: ValInner::add(Rc::clone(&self.inner), rhs.inner),
+            inner: ValInner::add(self.inner.clone(), Val::new(rhs).inner),
+        }
+    }
+}
+
+impl Add for &Val {
+    type Output = Val;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Val {
+            inner: ValInner::add(self.inner.clone(), rhs.inner.clone()),
         }
     }
 }
@@ -135,12 +144,12 @@ impl Sub<Val> for f32 {
     }
 }
 
-impl<T: Into<Val>> Mul<T> for Val {
+impl Mul for Val {
     type Output = Self;
 
-    fn mul(self, rhs: T) -> Self::Output {
+    fn mul(self, rhs: Self) -> Self::Output {
         Self {
-            inner: ValInner::mul(self.inner, rhs.into().inner),
+            inner: ValInner::mul(self.inner, rhs.inner),
         }
     }
 }
@@ -149,9 +158,15 @@ impl Mul for &Val {
     type Output = Val;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        Val {
-            inner: ValInner::mul(self.inner.clone(), rhs.inner.clone()),
-        }
+        self.clone() * rhs.clone()
+    }
+}
+
+impl Mul<&Val> for Val {
+    type Output = Val;
+
+    fn mul(self, rhs: &Val) -> Self::Output {
+        self * rhs.clone()
     }
 }
 
@@ -280,8 +295,8 @@ mod tests {
         //              + c(4.0, 3.0)
         // a(2.0, 3.0)                  *  x(12.0, 1.0)
         //                _(3.0, 4.0)
-        let c = b.clone() + a.clone();
-        let x = c.clone() * 3.0;
+        let c = &b + &a;
+        let x = &c * 3.0;
 
         x.backward();
 
@@ -303,26 +318,36 @@ mod tests {
         println!("B: {:?}", b);
         b += &a;
         println!("B: {:?}", b);
-        b.backward();
+        let c = &b - 2.0;
+        // a(3.0, 3.0)
+        //            *  b(9.0, _)(+=a)(12.0, 1.0)
+        // a(3.0, 3.0)                               -   c(10.0, 1.0)
+        //               _(2.0, -1.0)
+        c.backward();
         assert_eq!(12.0, b.data());
+        assert_eq!(1.0, b.grad());
+        assert_eq!(6.0, a.grad());
+        assert_eq!(10.0, c.data());
+        assert_eq!(1.0, c.grad());
     }
 
     #[test]
     fn test_micrograd_example() {
         let a = Val::new(-4.0);
         let b = Val::new(2.0);
-        let mut c = a.clone() + b.clone();
-        let mut d = a.clone() * b.clone() + (b.clone()).pow(3.0);
-        c += c.clone() + 1.0;
-        c += 1.0 + c.clone() + -(a.clone());
-        d += d.clone() * 2.0 + (b.clone() + a.clone()).relu();
-        d += 3.0 * d.clone() + (b.clone() - a.clone()).relu();
+        let mut c = &a + &b;
+        let mut d = &a * &b + (&b).pow(3.0);
+        c += &c + 1.0;
+        c += 1.0 + &c + -(&a);
+        d += &d * 2.0 + (&b + &a).relu();
+        d += 3.0 * &d + (&b - &a).relu();
         let e = c - d;
         let f = e.pow(2.0);
-        let mut g = f.clone() / 2.0;
+        let mut g = &f / 2.0;
         g += 10.0 / f;
         assert_eq!(24.0, g.data().floor());
         g.backward();
+        println!("g{:?}", g);
         // assert_eq!(139.0, a.grad().floor());
         // assert_eq!(646.0, b.grad().floor());
     }
